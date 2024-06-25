@@ -1,5 +1,9 @@
 ## State of Nature layers for Water Availability and Water Pollution to support SBTN Step 1: Assess and Step 2: Interpret & Prioritize (v2)
 
+This repo builds on work done by Rafael in https://github.com/Qnature/sbtn-SoN-water (which is a fork from https://github.com/rafaexx/sbtn-SoN-water). To match new SBTN guidelines, we are extracting individual indicators rather than generating a single unified layer. All other code remains the same. See the original repo description below:
+
+### ORIGINAL DESCRIPTION
+
 This repo is the result of a collaboration between SBTN, WRI, and WWF. It contains the code to generate the two ready-to-use unified layers of State of Nature (SoN) for water -- one for water availability and one for water pollution -- in line with the SBTN Technical Guidance for Steps 1: Assess and Step 2: Interpret & Prioritize. It generates 2 outputs, both containing the maximum value both for Water Availability and for Water Pollution as well as the datasets' raw values (as reference), but at different spatial resolution: 1) a shapefile with values at HydroSHEDS level 6, and 2) an excel file with values at sub-national divisions (Adm1) and national divisions (Adm0). This data (v2) and documentation will be soon publicly available for download from <https://doi.org/10.5281/zenodo.7797979> .
 
 These unified layers are intended to support companies assessing the SoN for Water Availability and Water Pollution around their operations and supply chain locations. Above all, they will enable companies to implement a robust approach more easily and will lead to more aligned and comparable results between companies.
