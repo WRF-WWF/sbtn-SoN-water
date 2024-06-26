@@ -1,0 +1,92 @@
+---
+title: "sbtn-SoN-water-h7"
+format: html
+---
+
+Take h6 data generated for SBTN and convert to h7 used for RFS.
+
+```{r}
+if (!require("pacman")) install.packages("pacman")
+pacman::p_load(here, dplyr, sf, mapview)
+```
+
+```{r}
+sf::sf_use_s2(FALSE) ## Issues with hydrobasin polygons
+```
+
+```{r}
+sharepoint_dir <- "C:\\Users\\Liam.Bailey\\wwfgermany\\FB-OuR-Daten - WRF"
+```
+
+```{r}
+## Generated in sbtn-SoN-water.qmd
+sbtn <- read_rds(here("../outputs", "h6", "sbtn_son_water_v2.rds")) |>
+  ## We are extracting the *individual layers*
+  ## We will also extract the max value (i.e. unified layer) just for comparability to old results
+  select(wa_max, bws_n, wdp_n, wsb_n, wp_max, cep_n, nox_n, pgp_n)
+```
+
+```{r}
+h7 <- st_read(here(sharepoint_dir, "ws_gis", "0_WRF_base", "WRF_baseGDB.gdb"), layer = "hydrosheds") |>
+  dplyr::select(ID_String)
+```
+
+## Transpose sbtn data (Hybas 6) to Hybas 7 ----
+# see https://r-spatial.org/book/07-Introsf.html#spatial-joins
+
+```{r}
+h7_sbtn <- h7 |>
+  st_join(sbtn, largest = TRUE) # This takes a good time to run
+```
+
+```{r}
+## Explore data ----
+## Missing data is minimal (all indicators have >95% completion rate)
+h7_sbtn |>
+  st_drop_geometry() |>
+  skim()
+```
+
+```{r}
+## Data are always between 1-5
+h7_sbtn |>
+  filter(if_any(wa_max:pgp_n, \(x) !between(x, 1, 5)))
+```
+```{r}
+## 3.5k hydrosheds with some NA data
+h7_sbtn |>
+  filter(if_any(wa_max:pgp_n, \(x) is.na(x))) |> 
+  nrow()
+```
+
+## Organize and export data ----
+
+```{r}
+## Convert NAs to be 0
+data_to_export <- h7_sbtn |> 
+  mutate(across(wa_max:pgp_n, .fns = \(x) replace_na(x, 0))) |> 
+  ## Rename to match expected keys
+  select(B1_1 = wdp_n,
+         B1_2 = bws_n,
+         B1_3 = wsb_n,
+         B4_1 = cep_n,
+         B4_2 = nox_n,
+         B4_3 = pgp_n)
+```
+
+```{r}
+## Check that NAs properly removed and data looks fine
+data_to_export |>
+  st_drop_geometry() |>
+  skim()
+```
+
+```{r}
+data_to_export |>
+  st_write(here("../outputs", "h7", "h7_sbtn.gpkg"),
+           layer_options = "ENCODING=UTF-8", delete_layer = TRUE)
+```
+
+
+
+
