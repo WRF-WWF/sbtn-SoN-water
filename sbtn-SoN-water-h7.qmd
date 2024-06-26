@@ -7,7 +7,7 @@ Take h6 data generated for SBTN and convert to h7 used for RFS.
 
 ```{r}
 if (!require("pacman")) install.packages("pacman")
-pacman::p_load(here, dplyr, sf, mapview)
+pacman::p_load(here, dplyr, sf, corrplot)
 ```
 
 ```{r}
@@ -32,6 +32,7 @@ h7 <- st_read(here(sharepoint_dir, "ws_gis", "0_WRF_base", "WRF_baseGDB.gdb"), l
 ```
 
 ## Transpose sbtn data (Hybas 6) to Hybas 7 ----
+
 # see https://r-spatial.org/book/07-Introsf.html#spatial-joins
 
 ```{r}
@@ -52,11 +53,23 @@ h7_sbtn |>
 h7_sbtn |>
   filter(if_any(wa_max:pgp_n, \(x) !between(x, 1, 5)))
 ```
+
 ```{r}
 ## 3.5k hydrosheds with some NA data
 h7_sbtn |>
   filter(if_any(wa_max:pgp_n, \(x) is.na(x))) |> 
   nrow()
+```
+
+```{r}
+## Correlation between indicators
+## Water *quality* indicators are very poorly correlated.
+## Water *availability* indicators are more strongly correlated (~0.65)
+corrplot(cor(h7_sbtn |>
+               st_drop_geometry() |>
+               as_tibble() |> 
+               select(-ID_String, -wa_max, -wp_max), use = "na.or.complete"),
+         type = "lower", method = "number", diag = FALSE)
 ```
 
 ## Organize and export data ----
@@ -86,7 +99,3 @@ data_to_export |>
   st_write(here("../outputs", "h7", "h7_sbtn.gpkg"),
            layer_options = "ENCODING=UTF-8", delete_layer = TRUE)
 ```
-
-
-
-
