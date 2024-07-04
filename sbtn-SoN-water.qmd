@@ -277,9 +277,9 @@ nox_n <- nox_n |>
     nox_raw = median,
     nox_n = case_when(
       median <= 0.4 ~ 1,
-      between(median, 0.4, 0.8) ~ 2,
-      between(median, 0.8, 1.2) ~ 3,
-      between(median, 1.2, 1.6) ~ 4,
+      median > 0.4 & median <= 0.8 ~ 2,
+      median > 0.8 & median <= 1.2 ~ 3,
+      median > 1.2 & median <= 1.6 ~ 4,
       median > 1.6 ~ 5
     ),
     nox_label = case_when(
@@ -321,15 +321,15 @@ pgp_n <- tnc_n |>
     limiting = if_else(ratio_n_p < 7, "N-limited", "P-limited"),
     pgp_n = case_when(
       limiting == "N-limited" & tnc_raw <= 0.4 ~ 1,
-      limiting == "N-limited" & between(tnc_raw, 0.4, 0.8) ~ 2,
-      limiting == "N-limited" & between(tnc_raw, 0.8, 1.2) ~ 3,
-      limiting == "N-limited" & between(tnc_raw, 1.2, 1.6) ~ 4,
+      limiting == "N-limited" & tnc_raw > 0.4 & tnc_raw <= 0.8 ~ 2,
+      limiting == "N-limited" & tnc_raw > 0.8 & tnc_raw <= 1.2 ~ 3,
+      limiting == "N-limited" & tnc_raw > 1.2 & tnc_raw <= 1.6 ~ 4,
       limiting == "N-limited" & tnc_raw > 1.6 ~ 5,
       
       limiting == "P-limited" & tpc_raw <= 0.023 ~ 1,
-      limiting == "P-limited" & between(tpc_raw, 0.023, 0.046) ~ 2,
-      limiting == "P-limited" & between(tpc_raw, 0.046, 0.100) ~ 3,
-      limiting == "P-limited" & between(tpc_raw, 0.100, 0.150) ~ 4,
+      limiting == "P-limited" & tnc_raw > 0.023 & tnc_raw <= 0.046 ~ 2,
+      limiting == "P-limited" & tnc_raw > 0.046 & tnc_raw <= 0.100  ~ 3,
+      limiting == "P-limited" & tnc_raw > 0.100 & tnc_raw <= 0.150 ~ 4,
       limiting == "P-limited" & tpc_raw > 0.150 ~ 5
     ),
     pgp_label = case_when(
