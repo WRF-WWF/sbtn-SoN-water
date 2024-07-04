@@ -79,7 +79,8 @@ corrplot(cor(h7_sbtn |>
 data_to_export <- h7_sbtn |> 
   mutate(across(wa_max:pgp_n, .fns = \(x) replace_na(x, 0))) |> 
   ## Rename to match expected keys
-  select(B1_1 = wdp_n,
+  select(LV_7_ID = ID_String,
+         B1_1 = wdp_n,
          B1_2 = bws_n,
          B1_3 = wsb_n,
          B4_1 = cep_n,
