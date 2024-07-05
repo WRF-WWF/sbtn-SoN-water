@@ -330,9 +330,9 @@ pgp_n <- tnc_n |>
       limiting == "N-limited" & tnc_raw > 1.6 ~ 5,
       
       limiting == "P-limited" & tpc_raw <= 0.023 ~ 1,
-      limiting == "P-limited" & tnc_raw > 0.023 & tnc_raw <= 0.046 ~ 2,
-      limiting == "P-limited" & tnc_raw > 0.046 & tnc_raw <= 0.100  ~ 3,
-      limiting == "P-limited" & tnc_raw > 0.100 & tnc_raw <= 0.150 ~ 4,
+      limiting == "P-limited" & tpc_raw > 0.023 & tpc_raw <= 0.046 ~ 2,
+      limiting == "P-limited" & tpc_raw > 0.046 & tpc_raw <= 0.100  ~ 3,
+      limiting == "P-limited" & tpc_raw > 0.100 & tpc_raw <= 0.150 ~ 4,
       limiting == "P-limited" & tpc_raw > 0.150 ~ 5
     ),
     pgp_label = case_when(
