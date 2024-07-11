@@ -21,37 +21,41 @@ pacman::p_load(here, dplyr, readr, readxl, sf, tidyr, terra, fasterize, purrr, e
 ```
 
 ```{r}
-dir.create(here("outputs", "temp_raster"))
+sharepoint_dir <- "C:\\Users\\Liam.Bailey\\wwfgermany"
 ```
 
 ## 2. Load data
 
 ```{r}
-son_water <- read_rds(here("outputs", "sbtn_son_water_v2.rds"))
+## We want to read in data at h6 level
+## No need to use h7 level for this aggregation
+son_water <- read_rds(here("../outputs", "h6", "sbtn_son_water_v2.rds"))
 ```
 
 ```{r}
-aqueduct_adm0 <- read_excel(here("inputs", "aqueduct40", "Aqueduct40_country_rankings.xlsx"), sheet = "country_baseline")
+aqueduct_adm0 <- read_excel(file.path(sharepoint_dir, "FB-OuR-Daten - WRF", "ws_gis", "1_library", "aqueduct_4.0", "aqueduct-4-0-country-rankings", "Aqueduct40_rankings_download_Y2023M07D05", "Aqueduct40_rankings_download_Y2023M07D05.xlsx"),
+                            sheet = "country_baseline")
 ```
 
 ```{r}
-aqueduct_adm1 <- read_excel(here("inputs", "aqueduct40", "Aqueduct40_country_rankings.xlsx"), sheet = "province_baseline")
-```
-
-```{r}
-onedrive_data <- "/Users/camargorafael/Library/CloudStorage/OneDrive-SharedLibraries-TheBostonConsultingGroup,Inc/Q-NC-Communities - G3S/3. Data"
+aqueduct_adm1 <- read_excel(file.path(sharepoint_dir, "FB-OuR-Daten - WRF", "ws_gis", "1_library", "aqueduct_4.0", "aqueduct-4-0-country-rankings", "Aqueduct40_rankings_download_Y2023M07D05", "Aqueduct40_rankings_download_Y2023M07D05.xlsx"),
+                            sheet = "province_baseline")
 ```
 
 *National level administrative division*
 
 ```{r}
-adm0 <- read_sf(here(onedrive_data, "adm_divisions", "gadm_410_adm0_100m.shp"))
+## We need to use OUR ESRI updated boundaries for RFS
+## Rather than GADM borders that Rafael used
+adm0 <- st_read(file.path(sharepoint_dir, "FB-OuR-Daten - WRF", "ws_gis", "1_library", "boundaries_esri", "world_adm0_esri_edited_diss.shp"))
 ```
 
 *Sub-national level administrative division*
 
 ```{r}
-adm1 <- read_sf(here(onedrive_data, "adm_divisions", "gadm_410_adm1_100m.shp"))
+## We need to use OUR ESRI updated boundaries for RFS
+## Rather than GADM borders that Rafael used
+adm1 <- st_read(file.path(sharepoint_dir, "FB-OuR-Daten - WRF", "ws_gis", "1_library", "boundaries_esri", "world_adm1_esri_edited_diss.shp"))
 ```
 
 ## 3. Prepare data to use as weights
@@ -97,12 +101,26 @@ wdp_weights <- list.files(here(), pattern = "wdp_weight_", recursive = TRUE) |>
 
 ```{r}
 wsb_weights <- list(
-  rast(here("inputs", "blue_water_scarcity", "blue_water_footprint", "sectoral", "wfbl_agr_m3y", "w001001.adf")),
-  rast(here("inputs", "blue_water_scarcity", "blue_water_footprint", "sectoral", "wfbl_dom_m3y", "w001001.adf")),
-  rast(here("inputs", "blue_water_scarcity", "blue_water_footprint", "sectoral", "wfbl_ind_m3y", "w001001.adf")),
-  rast(here("inputs", "blue_water_scarcity", "blue_water_footprint", "total", "wfbl_yr_30m", "w001001.adf"))
+  rast(file.path(sharepoint_dir, "FB-OuR-Daten - 10_RiskSuite", "Data_and_Analysis", "Data", "BlueWaterFootprint_MekonnenHoekstra_2016", "WFbl_AgDomInd", "WFbl_m3yr", "wfbl_agr_m3y", "w001001.adf")),
+  rast(file.path(sharepoint_dir, "FB-OuR-Daten - 10_RiskSuite", "Data_and_Analysis", "Data", "BlueWaterFootprint_MekonnenHoekstra_2016", "WFbl_AgDomInd", "WFbl_m3yr", "wfbl_dom_m3y", "w001001.adf")),
+  rast(file.path(sharepoint_dir, "FB-OuR-Daten - 10_RiskSuite", "Data_and_Analysis", "Data", "BlueWaterFootprint_MekonnenHoekstra_2016", "WFbl_AgDomInd", "WFbl_m3yr", "wfbl_ind_m3y", "w001001.adf"))
 ) |> 
-  set_names("agr", "dom", "ind", "tot")
+  set_names("agr", "dom", "ind")
+
+## Add in the total footprint of all industries
+wsb_weights$tot <- terra::rast(
+  ## Create a stacked raster...
+  list(
+    wsb_weights$agr,
+    ## Ensure that extent and resolution is same for all layers
+    ## Need to coerce to same extent because agr has different ext
+    terra::resample(wsb_weights$dom,
+                    wsb_weights$agr),
+    terra::resample(wsb_weights$ind,
+                    wsb_weights$agr)
+  )) |> 
+  ## Sum all layers together
+  terra::app(sum)
 ```
 
 ## 4. Rasterize SoN water layers
