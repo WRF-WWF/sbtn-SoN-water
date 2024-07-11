@@ -21,37 +21,42 @@ pacman::p_load(here, dplyr, readr, readxl, sf, tidyr, terra, fasterize, purrr, e
 ```
 
 ```{r}
-dir.create(here("outputs", "temp_raster"))
+sharepoint_dir <- "C:\\Users\\Liam.Bailey\\wwfgermany"
+temp_raster_dir <- dir.create(here::here("../outputs", "temp_rasters"))
 ```
 
 ## 2. Load data
 
 ```{r}
-son_water <- read_rds(here("outputs", "sbtn_son_water_v1_1.rds"))
+## We want to read in data at h6 level
+## No need to use h7 level for this aggregation
+son_water <- read_rds(here("../outputs", "h6", "sbtn_son_water_v2.rds"))
 ```
 
 ```{r}
-aqueduct_adm0 <- read_excel(here("inputs", "aqueduct40", "Aqueduct40_country_rankings.xlsx"), sheet = "country_baseline")
+aqueduct_adm0 <- read_excel(file.path(sharepoint_dir, "FB-OuR-Daten - WRF", "ws_gis", "1_library", "aqueduct_4.0", "aqueduct-4-0-country-rankings", "Aqueduct40_rankings_download_Y2023M07D05", "Aqueduct40_rankings_download_Y2023M07D05.xlsx"),
+                            sheet = "country_baseline")
 ```
 
 ```{r}
-aqueduct_adm1 <- read_excel(here("inputs", "aqueduct40", "Aqueduct40_country_rankings.xlsx"), sheet = "province_baseline")
-```
-
-```{r}
-onedrive_data <- "/Users/camargorafael/Library/CloudStorage/OneDrive-SharedLibraries-TheBostonConsultingGroup,Inc/Q-NC-Communities - G3S/3. Data"
+aqueduct_adm1 <- read_excel(file.path(sharepoint_dir, "FB-OuR-Daten - WRF", "ws_gis", "1_library", "aqueduct_4.0", "aqueduct-4-0-country-rankings", "Aqueduct40_rankings_download_Y2023M07D05", "Aqueduct40_rankings_download_Y2023M07D05.xlsx"),
+                            sheet = "province_baseline")
 ```
 
 *National level administrative division*
 
 ```{r}
-adm0 <- read_sf(here(onedrive_data, "adm_divisions", "gadm_410_adm0_100m.shp"))
+## We need to use OUR ESRI updated boundaries for RFS
+## Rather than GADM borders that Rafael used
+adm0 <- st_read(file.path(sharepoint_dir, "FB-OuR-Daten - WRF", "ws_gis", "1_library", "boundaries_esri", "world_adm0_esri_edited_diss.shp"))
 ```
 
 *Sub-national level administrative division*
 
 ```{r}
-adm1 <- read_sf(here(onedrive_data, "adm_divisions", "gadm_410_adm1_100m.shp"))
+## We need to use OUR ESRI updated boundaries for RFS
+## Rather than GADM borders that Rafael used
+adm1 <- st_read(file.path(sharepoint_dir, "FB-OuR-Daten - WRF", "ws_gis", "1_library", "boundaries_esri", "world_adm1_esri_edited_diss.shp"))
 ```
 
 ## 3. Rasterize SoN water layers
@@ -59,7 +64,7 @@ adm1 <- read_sf(here(onedrive_data, "adm_divisions", "gadm_410_adm1_100m.shp"))
 ```{r}
 fasterize_son_water <- function(var){
   fasterize(son_water, raster(son_water, res = 0.01), field = var, fun = "max") |>
-    writeRaster(here("outputs", "temp_raster", paste0(var, ".tif")), overwrite = TRUE)
+    writeRaster(file.path(temp_raster_dir, paste0(var, ".tif")), overwrite = TRUE)
 }
 
 map(list("wdp_n", "wsb_n", "cep_n", "nox_n", "pgp_n"), fasterize_son_water)
@@ -88,11 +93,14 @@ list_wp <- list(
 
 ```{r}
 waterGap3_consumption <- read_csv(
-  here("inputs", "water_depletion", "SectorConsumption_m3_annual.csv"),
+  file.path(sharepoint_dir, "FB-OuR-Daten - 10_RiskSuite", "Data_and_Analysis", "Data", "WaterDepletion_WaterGap3_2000", "SectorConsumption_m3_annual.csv"),
   col_names = c("subBas_ID", "domestic", "manufacturing", "electric", "irrigation", "livestock")
 )
 
-waterGap3_consumption <- read_sf(here("inputs", "water_depletion", "WaterGap3Shape", "WaterGap3_AllBasins.shp")) |>
+waterGap3_consumption <- read_sf(file.path(sharepoint_dir,
+                                           "FB-OuR-Daten - 10_RiskSuite", "Data_and_Analysis",
+                                           "Data", "WaterDepletion_WaterGap3_2000", "WaterGap3Shape",
+                                           "WaterGap3_AllBasins.shp")) |>
   dplyr::select(subBas_ID = ContUID) |>
   inner_join(waterGap3_consumption, by = "subBas_ID") |>
   mutate(
@@ -109,14 +117,14 @@ waterGap3_consumption <- read_sf(here("inputs", "water_depletion", "WaterGap3Sha
 
 fasterize_vars <- function(var){
   fasterize(waterGap3_consumption, raster(waterGap3_consumption, res = 0.01), field = var, fun = "max") |>
-    writeRaster(here("outputs", "temp_raster", paste0("wdp_weight_", var, ".tif")), overwrite = TRUE)
+    writeRaster(file.path(temp_raster_dir, paste0("wdp_weight_", var, ".tif")), overwrite = TRUE)
 }
 
 map(list("dom", "ind", "irr", "liv", "tot"), fasterize_vars)
 ```
 
 ```{r}
-wdp_weights <- list.files(here(), pattern = "wdp_weight_", recursive = TRUE) |> 
+wdp_weights <- list.files(temp_raster_dir, pattern = "wdp_weight_", recursive = TRUE) |> 
   map(rast) |> 
   set_names("dom", "ind", "irr", "liv", "tot")
 ```
@@ -125,12 +133,26 @@ wdp_weights <- list.files(here(), pattern = "wdp_weight_", recursive = TRUE) |>
 
 ```{r}
 wsb_weights <- list(
-  rast(here("inputs", "blue_water_scarcity", "blue_water_footprint", "sectoral", "wfbl_agr_m3y", "w001001.adf")),
-  rast(here("inputs", "blue_water_scarcity", "blue_water_footprint", "sectoral", "wfbl_dom_m3y", "w001001.adf")),
-  rast(here("inputs", "blue_water_scarcity", "blue_water_footprint", "sectoral", "wfbl_ind_m3y", "w001001.adf")),
-  rast(here("inputs", "blue_water_scarcity", "blue_water_footprint", "total", "wfbl_yr_30m", "w001001.adf"))
+  rast(file.path(sharepoint_dir, "FB-OuR-Daten - 10_RiskSuite", "Data_and_Analysis", "Data", "BlueWaterFootprint_MekonnenHoekstra_2016", "WFbl_AgDomInd", "WFbl_m3yr", "wfbl_agr_m3y", "w001001.adf")),
+  rast(file.path(sharepoint_dir, "FB-OuR-Daten - 10_RiskSuite", "Data_and_Analysis", "Data", "BlueWaterFootprint_MekonnenHoekstra_2016", "WFbl_AgDomInd", "WFbl_m3yr", "wfbl_dom_m3y", "w001001.adf")),
+  rast(file.path(sharepoint_dir, "FB-OuR-Daten - 10_RiskSuite", "Data_and_Analysis", "Data", "BlueWaterFootprint_MekonnenHoekstra_2016", "WFbl_AgDomInd", "WFbl_m3yr", "wfbl_ind_m3y", "w001001.adf"))
 ) |> 
-  set_names("agr", "dom", "ind", "tot")
+  set_names("agr", "dom", "ind")
+
+## Add in the total footprint of all industries
+wsb_weights$tot <- terra::rast(
+  ## Create a stacked raster...
+  list(
+    wsb_weights$agr,
+    ## Ensure that extent and resolution is same for all layers
+    ## Need to coerce to same extent because agr has different ext
+    terra::resample(wsb_weights$dom,
+                    wsb_weights$agr),
+    terra::resample(wsb_weights$ind,
+                    wsb_weights$agr)
+  )) |> 
+  ## Sum all layers together
+  terra::app(sum)
 ```
 
 ### 4.3. Global Cropland Extent (2019) [Potapov et al. 2021](https://glad.umd.edu/dataset/croplands)
